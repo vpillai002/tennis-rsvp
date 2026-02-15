@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import os
 import secrets
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
 
-import psycopg2
-from psycopg2.extras import RealDictCursor
 from flask import Flask, jsonify, request, send_from_directory
 
 BASE_DIR = Path(__file__).parent
-DB_URL = os.environ.get("SUPABASE_DB_URL") or os.environ.get("DATABASE_URL")
+DB_PATH = BASE_DIR / "events.db"
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 ADMIN_USERNAME = "admin"
@@ -19,46 +18,43 @@ ADMIN_PASSWORD = "tennis123"
 TOKENS: Dict[str, datetime] = {}
 
 
-def get_db() -> psycopg2.extensions.connection:
-    if not DB_URL:
-        raise RuntimeError("SUPABASE_DB_URL is not set")
-    url = DB_URL
-    if "sslmode=" not in url:
-        separator = "&" if "?" in url else "?"
-        url = f"{url}{separator}sslmode=require"
-    return psycopg2.connect(url, cursor_factory=RealDictCursor)
+def get_db() -> sqlite3.Connection:
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
 
 
 def init_db() -> None:
     with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS events (
-                    id TEXT PRIMARY KEY,
-                    title TEXT NOT NULL,
-                    date TEXT NOT NULL,
-                    location TEXT,
-                    notes TEXT,
-                    color TEXT
-                )
-                """
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS events (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                date TEXT NOT NULL,
+                location TEXT,
+                notes TEXT,
+                color TEXT
             )
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS rsvps (
-                    id SERIAL PRIMARY KEY,
-                    event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-                    name TEXT NOT NULL,
-                    choice TEXT NOT NULL,
-                    updated_at TIMESTAMPTZ NOT NULL,
-                    UNIQUE(event_id, name)
-                )
-                """
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS rsvps (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                choice TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(event_id, name),
+                FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
             )
+            """
+        )
 
 
-def row_to_event(row: Dict[str, str], responses: Dict[str, str]) -> dict:
+def row_to_event(row: sqlite3.Row, responses: Dict[str, str]) -> dict:
     return {
         "id": row["id"],
         "title": row["title"],
@@ -98,11 +94,8 @@ def index():
 def get_events():
     init_db()
     with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT * FROM events")
-            events = cur.fetchall()
-            cur.execute("SELECT event_id, name, choice FROM rsvps")
-            rsvp_rows = cur.fetchall()
+        events = conn.execute("SELECT * FROM events").fetchall()
+        rsvp_rows = conn.execute("SELECT event_id, name, choice FROM rsvps").fetchall()
 
     responses_map: Dict[str, Dict[str, str]] = {}
     for row in rsvp_rows:
@@ -124,21 +117,20 @@ def create_event():
             return jsonify({"error": f"Missing {key}"}), 400
 
     with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO events (id, title, date, location, notes, color)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    data["id"],
-                    data["title"],
-                    data["date"],
-                    data.get("location"),
-                    data.get("notes"),
-                    data.get("color"),
-                ),
-            )
+        conn.execute(
+            """
+            INSERT INTO events (id, title, date, location, notes, color)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                data["id"],
+                data["title"],
+                data["date"],
+                data.get("location"),
+                data.get("notes"),
+                data.get("color"),
+            ),
+        )
 
     return jsonify({"status": "ok"})
 
@@ -150,22 +142,21 @@ def update_event(event_id: str):
         return jsonify({"error": "Unauthorized"}), 401
     data = request.get_json(force=True)
     with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                UPDATE events
-                SET title = %s, date = %s, location = %s, notes = %s, color = %s
-                WHERE id = %s
-                """,
-                (
-                    data.get("title"),
-                    data.get("date"),
-                    data.get("location"),
-                    data.get("notes"),
-                    data.get("color"),
-                    event_id,
-                ),
-            )
+        conn.execute(
+            """
+            UPDATE events
+            SET title = ?, date = ?, location = ?, notes = ?, color = ?
+            WHERE id = ?
+            """,
+            (
+                data.get("title"),
+                data.get("date"),
+                data.get("location"),
+                data.get("notes"),
+                data.get("color"),
+                event_id,
+            ),
+        )
 
     return jsonify({"status": "ok"})
 
@@ -176,8 +167,7 @@ def delete_event(event_id: str):
     if not require_admin():
         return jsonify({"error": "Unauthorized"}), 401
     with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM events WHERE id = %s", (event_id,))
+        conn.execute("DELETE FROM events WHERE id = ?", (event_id,))
     return jsonify({"status": "ok"})
 
 
@@ -191,16 +181,15 @@ def rsvp_event(event_id: str):
         return jsonify({"error": "Invalid RSVP"}), 400
 
     with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO rsvps (event_id, name, choice, updated_at)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (event_id, name)
-                DO UPDATE SET choice = EXCLUDED.choice, updated_at = EXCLUDED.updated_at
-                """,
-                (event_id, name, choice, datetime.utcnow().isoformat()),
-            )
+        conn.execute(
+            """
+            INSERT INTO rsvps (event_id, name, choice, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(event_id, name)
+            DO UPDATE SET choice = excluded.choice, updated_at = excluded.updated_at
+            """,
+            (event_id, name, choice, datetime.utcnow().isoformat()),
+        )
 
     return jsonify({"status": "ok"})
 
