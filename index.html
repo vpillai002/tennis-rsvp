@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tennis RSVP</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <h1>Tennis RSVP</h1>
+      <p class="subtitle">Share events and track intent: Yes / Maybe / No</p>
+    </div>
+    <div class="header-actions">
+      <button id="adminToggle" class="ghost">Admin mode</button>
+      <button id="resetDemo" class="ghost">Load demo</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel" id="eventsPanel">
+      <div class="panel-header">
+        <h2>Events</h2>
+        <div class="filters">
+          <input id="searchInput" type="search" placeholder="Search events" />
+          <select id="filterStatus">
+            <option value="all">All</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="past">Past</option>
+          </select>
+        </div>
+      </div>
+      <div id="eventsList" class="event-list"></div>
+      <div id="emptyState" class="empty-state">No events yet. Switch to Admin mode to add one.</div>
+    </section>
+
+    <aside class="panel" id="adminPanel" hidden>
+      <div class="panel-header">
+        <h2>Admin</h2>
+        <span class="chip">Create / Edit</span>
+      </div>
+      <form id="eventForm" class="event-form">
+        <input type="hidden" id="eventId" />
+        <label>
+          Event title
+          <input id="eventTitle" required maxlength="60" placeholder="Weekly tennis" />
+        </label>
+        <label>
+          Date & time
+          <input id="eventDate" type="datetime-local" required />
+        </label>
+        <label>
+          Location
+          <input id="eventLocation" maxlength="80" placeholder="City courts" />
+        </label>
+        <label>
+          Notes
+          <textarea id="eventNotes" rows="3" maxlength="200" placeholder="Rain plan, balls, etc."></textarea>
+        </label>
+        <label>
+          Color tag
+          <input id="eventColor" type="color" value="#1f7aec" />
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="primary">Save event</button>
+          <button type="button" id="clearForm" class="ghost">Clear</button>
+        </div>
+      </form>
+      <div class="panel-footer">
+        <p class="hint">Admin mode is stored only in your browser. Share the page link with others so they can RSVP.</p>
+      </div>
+    </aside>
+  </main>
+
+  <template id="eventCardTemplate">
+    <article class="event-card">
+      <div class="event-color"></div>
+      <div class="event-body">
+        <header>
+          <h3 class="event-title"></h3>
+          <div class="event-meta"></div>
+        </header>
+        <p class="event-notes"></p>
+        <div class="rsvp-grid">
+          <div class="rsvp-buttons">
+            <button data-choice="yes" class="rsvp yes">Yes</button>
+            <button data-choice="maybe" class="rsvp maybe">Maybe</button>
+            <button data-choice="no" class="rsvp no">No</button>
+          </div>
+          <div class="rsvp-summary"></div>
+        </div>
+        <div class="event-actions" hidden>
+          <button class="ghost edit">Edit</button>
+          <button class="ghost danger delete">Delete</button>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
