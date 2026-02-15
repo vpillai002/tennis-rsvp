@@ -203,6 +203,50 @@ button:disabled {
   color: var(--muted);
 }
 
+.rsvp-names {
+  margin-top: 0.8rem;
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  background: #fafbff;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.rsvp-group {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 0.6rem;
+  align-items: start;
+}
+
+.rsvp-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.7rem;
+}
+
+.rsvp-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+}
+
+.rsvp-pill {
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font-size: 0.75rem;
+}
+
 .summary-chip {
   padding: 0.35rem 0.5rem;
   border-radius: 10px;

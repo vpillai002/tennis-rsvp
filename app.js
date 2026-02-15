@@ -98,6 +98,7 @@ function renderEvents() {
     const meta = card.querySelector(".event-meta");
     const notes = card.querySelector(".event-notes");
     const summary = card.querySelector(".rsvp-summary");
+    const rsvpNames = card.querySelector(".rsvp-names");
     const buttons = card.querySelectorAll(".rsvp");
     const actions = card.querySelector(".event-actions");
 
@@ -113,6 +114,14 @@ function renderEvents() {
       createSummaryChip("Maybe", totals.maybe),
       createSummaryChip("No", totals.no)
     );
+
+    if (state.admin) {
+      rsvpNames.hidden = false;
+      rsvpNames.innerHTML = buildRsvpNames(event.responses || {});
+    } else {
+      rsvpNames.hidden = true;
+      rsvpNames.innerHTML = "";
+    }
 
     buttons.forEach((button) => {
       const choice = button.dataset.choice;
@@ -170,6 +179,53 @@ function tallyResponses(responses) {
     },
     { yes: 0, maybe: 0, no: 0 }
   );
+}
+
+function buildRsvpNames(responses) {
+  const grouped = { yes: [], maybe: [], no: [] };
+  Object.entries(responses).forEach(([name, choice]) => {
+    if (grouped[choice]) {
+      grouped[choice].push(name);
+    }
+  });
+
+  return [
+    renderRsvpGroup("Yes", grouped.yes),
+    renderRsvpGroup("Maybe", grouped.maybe),
+    renderRsvpGroup("No", grouped.no),
+  ].join("");
+}
+
+function renderRsvpGroup(label, names) {
+  if (!names.length) {
+    return `
+      <div class="rsvp-group">
+        <div class="rsvp-label">${label}</div>
+        <div>None yet</div>
+      </div>
+    `;
+  }
+
+  const list = names
+    .sort((a, b) => a.localeCompare(b))
+    .map((name) => `<li class="rsvp-pill">${escapeHtml(name)}</li>`)
+    .join("");
+
+  return `
+    <div class="rsvp-group">
+      <div class="rsvp-label">${label}</div>
+      <ul class="rsvp-list">${list}</ul>
+    </div>
+  `;
+}
+
+function escapeHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 async function handleRsvp(eventId, choice) {
