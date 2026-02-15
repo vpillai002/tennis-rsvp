@@ -2,6 +2,7 @@ services:
   - type: web
     name: tennis-rsvp
     env: python
+    runtime: python-3.11.8
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
