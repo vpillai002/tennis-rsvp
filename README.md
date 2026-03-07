@@ -1,6 +1,6 @@
-# Tennis RSVP
+# RSVP
 
-A shared RSVP board for recurring tennis events. Admins can add events; visitors can RSVP Yes/Maybe/No. Data is stored in a local SQLite file on your Raspberry Pi, so it persists as long as the Pi stays online.
+A shared RSVP board for recurring events. Admins can add events; visitors can RSVP Yes/Maybe/No. Data is stored in a local SQLite file on my Raspberry Pi, so it persists as long as the Pi stays online.
 
 ## How to run (Raspberry Pi)
 1. Install dependencies: pip install -r requirements.txt
